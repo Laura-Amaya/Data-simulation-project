@@ -18,17 +18,18 @@ Simulating this data has been very complicated, first of all because this study 
 
 Also, not all the variables described in the paper were measured on the same subjects, as a result, I have divided my data into 5 different tables:
 
-  * *Protein production*
-      * 5 predictor variables (some correlation among them) and age as a response variable.
-  * *mRNA expression*
-      * 3 predictor variables and age as a response variable (plus age category as factor variable to display the data).
+    * *Protein production (TNFa, IL2, IL4, IL5, IL10)*
+      * 5 cytokines as predictor variables (there is some correlation among them) and age as a response variable.
+  * *mRNA expression (IL2, TNFa, IL4)*
+      * 3 cytokines as predictor variables and age as a response variable.
   * *Cells producing INFy*
-      * 1 predictor variables (correlated with IL12) and age as a response variable.
+      * 1 predictor variables (it is correlated with IL12) and age as a response variable.
   * *Cells producing TNFa*
       * 1 predictor variables and age as a response variable.
-  * *Cells producing IL12*
-      * 2 predictor variables and age as a response variable.
+  * *Cells producing IL12, TGFb*
+      * 2 cytokines as predictor variables and age as a response variable.
 
+All predictor variables and response variable are numeric, however during the analysis of my data and with the purpose to visualize my data grouped by age  I have created factor variables for age categories (preterm, newborn, infant and adult) or for age intervals (from 1 to 96 months, every 7 months). 
 
 <span style="color:blue">Data simulation</span>
 -----------
