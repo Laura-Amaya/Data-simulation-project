@@ -18,7 +18,7 @@ Simulating this data has been very complicated, first of all because this study 
 
 Also, not all the variables described in the paper were measured on the same subjects, as a result, I have divided my data into 5 different tables:
 
-    * *Protein production (TNFa, IL2, IL4, IL5, IL10)*
+  * *Protein production (TNFa, IL2, IL4, IL5, IL10)*
       * 5 cytokines as predictor variables (there is some correlation among them) and age as a response variable.
   * *mRNA expression (IL2, TNFa, IL4)*
       * 3 cytokines as predictor variables and age as a response variable.
@@ -38,207 +38,8 @@ In order to simulate the correlations described in this paper, I have used Spear
 I have made several assumptions related to the distribution of the data in order to generate my random correlated variables. I have assumed a uniform distribution for cytokine production (units: mg/ul) and also for mRNA expression (units: cytokine mRNA expression/106 β-actin mRNA copies), and a Poisson distribution for all those variables that represent the percentage of cells expressing cytokines (IL12, INFy, and TNFa). 
 
 
->Here is the code used to simulate cytokine production:
-
-~~~
-N<-1000 # Determine the size of this data set 
-
-# Random sample function
-ordsamplep<-function (n, lambda, Sigma)
-{
-  k <- length(lambda)
-  valori <- mvrnorm(n, rep(0, k), Sigma)
-  for (i in 1:k)
-  {
-    valori[, i] <- qpois(pnorm(valori[,i]), lambda[i])
-  }
-  return(valori)
-}
-
-# Create a Correlation matrix function
-
-s_mat <- function (n, ev = runif(n, 0, 10)) 
-{
-  Z <- matrix(ncol=n, rnorm(n^2))
-  decomp <- qr(Z)
-  Q <- qr.Q(decomp) 
-  R <- qr.R(decomp)
-  d <- diag(R)
-  ph <- d / abs(d)
-  O <- Q %*% diag(ph)
-  Z <- t(O) %*% diag(ev) %*% O
-  return(Z)
-}
-
-set.seed(222)
-Sigma_m <- s_mat(n=6, ev=3:8)
-Sigma_m[2,1]<-1.8 #384
-Sigma_m[1,2]<-1.8
-Sigma_m[3,1]<-2.2 #414
-Sigma_m[1,3]<-2.2
-Sigma_m[4,1]<-1.7 #342
-Sigma_m[1,4]<-1.7
-Sigma_m[3,2]<-3.6 #744
-Sigma_m[2,3]<-3.6
-Sigma_m[4,2]<-2.4 #579
-Sigma_m[2,4]<-2.4
-Sigma_m[6,2]<-2.4 #519
-Sigma_m[2,6]<-2.4
-Sigma_m[4,3]<-3.8 #753
-Sigma_m[3,4]<-3.8
-Sigma_m[6,3]<-3.5 #736
-Sigma_m[3,6]<-3.5
-Sigma_m[5,4]<-3.8 #845
-Sigma_m[4,5]<-3.8
-Sigma_m[6,4]<-3.5 #766
-Sigma_m[4,6]<-3.5
-Sigma_m[6,5]<-3 #756
-Sigma_m[5,6]<-3
-eigen(Sigma_m)$val
-
-set.seed(222)
-# Order: age_p, c_IL2, c_TNFa, c_IL4, c_IL5 , c_IL10
-lambda <- c(40, 6000, 4000, 300, 1000, 1000)
-Sigma<-Sigma_m
-df_mg_age <- ordsamplep(N, lambda, Sigma)
-colnames(df_mg_age)<-c("age", "IL2_mg", "TNFa_mg", "IL4_mg", "IL5", "IL10")
-df_mg_age<-data.frame(df_mg_age)
-
-#Negative values to 0
-n_df_mg_age<-df_mg_age
-n_df_mg_age$IL2_mg[df_mg_age$IL2_mg<0] <- 0
-n_df_mg_age$TNFa_mg[df_mg_age$TNFa_mg<0] <- 0
-n_df_mg_age$IL4_mg[df_mg_age$IL4_mg<0] <- 0
-
-~~~
-
->Here is the code used to simulate mRNA expression:
-
-~~~
-set.seed(222)
-Sigma_m <- s_mat(n=4, ev=1:4)
-eigen(Sigma_m)$val
-# Only IL4 and age are correlated
-Sigma_m[4,1]<-0.63
-Sigma_m[1,4]<-0.63
-eigen(Sigma_m)$val
-
-lambda <- c(12, 5000, 2000,20000)
-Sigma<-Sigma_m
-df_mRNA_age<- ordsamplep(N, lambda, Sigma)
-colnames(df_mRNA_age)<-c("age", "IL2", "TNFa_m", "IL4")
-df_mRNA_age<-data.frame(df_mRNA_age)
-
-#Create age category 
-df_mRNA_age$age_interval<-NA
-df_mRNA_age$age_interval[df_mRNA_age$age==0]<-"0 Newborn"
-df_mRNA_age$age_interval[df_mRNA_age$age>=1 & df_mRNA_age$age<=6]<-"1-6 months"
-df_mRNA_age$age_interval[df_mRNA_age$age>=7 & df_mRNA_age$age<=12]<-"7-12 months"
-df_mRNA_age$age_interval[df_mRNA_age$age>=13 & df_mRNA_age$age<=24]<-"13-24 months"
-df_mRNA_age$age_interval[df_mRNA_age$age>=25 & df_mRNA_age$age<=48]<-"25-48 months"
-df_mRNA_age$age_interval[df_mRNA_age$age>=49 & df_mRNA_age$age<=96]<-"49-96 months"
-
-~~~
-
->Here is the code used to simulate INFy and TNFa expression:
-
-~~~
-set.seed(222)
-age_IFNy<-c(rep(120, N*(0.14)), rep(0,N*(0.2)), rep(-20,N*(0.23)), ceiling(runif(N*(0.43), 1, 96)))
-age_df <- as.data.frame(replicate(1, sample(age_IFNy, N, replace = F))) 
-
-sampling <- function(n, rho, X1) {
-  
-  C <- matrix(rho, nrow = 2, ncol = 2)
-  diag(C) <- 1
-  C <- chol(C)
-  X2 <- runif(N, 0, 60)
-  X <- cbind(X1,X2)
-  # Induce correlation
-  df <- X %*% C
-  return(df)
-}
-
-df_IFNy_age<-sampling(N,0.4, age_df[,1])
-colnames(df_IFNy_age)<-c("age", "IFNy")
-df_IFNy_age<-data.frame(df_IFNy_age)
-
-#Negative values to 0
-n_df_IFNy_age<-df_IFNy_age
-n_df_IFNy_age$IFNy[n_df_IFNy_age$IFNy<0] <- 0
-
-#Age categories 
-n_df_IFNy_age$category[n_df_IFNy_age$age==-20]<-'preterm'
-n_df_IFNy_age$category[n_df_IFNy_age$age== 0]<-"newborn"
-n_df_IFNy_age$category[n_df_IFNy_age$age>0 & n_df_IFNy_age$age<=96]<-"Infant"
-n_df_IFNy_age$category[n_df_IFNy_age$age== 120]<-"Adult"
-
-############################################################################
-
-set.seed(222)
-age_TNFa<-c(rep(120, N*(0.19)), rep(0,N*(.13)), rep(-20,N*(.14)), ceiling(runif(N*(.54), 1, 96)))
-age_df <- as.data.frame(replicate(1, sample(age_TNFa, N, replace = F))) 
-
-sampling <- function(n, rho, X1) {
-  C <- matrix(rho, nrow = 2, ncol = 2)
-  diag(C) <- 1
-  C <- chol(C)
-  X2 <- runif(N, 0, 40)
-  X <- cbind(X1,X2)
-  # Induce correlation
-  df <- X %*% C
-  return(df)
-}
-
-df_TNFa_age<-sampling(N,0.315, age_df[,1])
-colnames(df_TNFa_age)<-c("age", "TNFa")
-df_TNFa_age<-data.frame(df_TNFa_age)
-
-#Negative values to 0
-n_df_TNFa_age<-df_TNFa_age
-n_df_TNFa_age$TNFa[n_df_TNFa_age$TNFa<0] <- 0
-
-#Age category 
-n_df_TNFa_age$category[n_df_TNFa_age$age==-20]<-'preterm'
-n_df_TNFa_age$category[n_df_TNFa_age$age== 0]<-"newborn"
-n_df_TNFa_age$category[n_df_TNFa_age$age>0 & n_df_TNFa_age$age<=96]<-"Infant"
-n_df_TNFa_age$category[n_df_TNFa_age$age== 120]<-"Adult"
-
-~~~
-
->Here is the code used to simulate IL12 producing cells:
-
-~~~
-set.seed(222)
-v_IFNy<-df_IFNy_age[,2]
-age_IL12<-c(rep(0,N*(.16)), ceiling(runif(N*(0.84), 1, 96))) 
-age_df <- as.data.frame(replicate(1, sample(age_IL12, N, replace = F))) 
-
-sampling <- function(n, rho, X1) {
-  C <- matrix(rho, nrow = 2, ncol = 2)
-  diag(C) <- 1
-  C <- chol(C)
-  X2 <- runif(N, 0, 50)
-  X <- cbind(X1,X2)
-  # Induce correlation
-  df <- X %*% C
-  return(df)
-}
-
-df_IL12_age<-sampling(N,0.15, age_df[,1])
-colnames(df_IL12_age)<-c("age", "IL12")
-df_IL12_age<-data.frame(df_IL12_age)
-#Add a column for TFGb
-df_IL12_age$TFGb<-c(runif(N, 0, 50))
-
-#Negative values to 0
-n_df_IL12_age<-df_IL12_age
-n_df_IL12_age$IL12[n_df_IL12_age$IL12<0] <- 0
-
-~~~
-
-
 ```{r echo=FALSE, include=F, results='hide', message=FALSE}
+
 ##################
 library(MASS)
 library(ggplot2)
@@ -249,6 +50,15 @@ library(gridExtra)
 #install.packages("Rmisc")
 library(Rmisc)
 ###################
+
+```
+
+
+>Here is the code used to simulate cytokine production:
+
+
+```{r results='hide', warning=F, message=FALSE}
+
 N<-1000 # Determine the size of this data set 
 
 # Random sample function
@@ -318,7 +128,12 @@ n_df_mg_age$IL2_mg[df_mg_age$IL2_mg<0] <- 0
 n_df_mg_age$TNFa_mg[df_mg_age$TNFa_mg<0] <- 0
 n_df_mg_age$IL4_mg[df_mg_age$IL4_mg<0] <- 0
 
-#--------------
+```
+
+>Here is the code used to simulate mRNA expression:
+
+```{r results='hide', warning=F, message=FALSE}
+
 set.seed(222)
 Sigma_m <- s_mat(n=4, ev=1:4)
 eigen(Sigma_m)$val
@@ -342,7 +157,13 @@ df_mRNA_age$age_interval[df_mRNA_age$age>=13 & df_mRNA_age$age<=24]<-"13-24 mont
 df_mRNA_age$age_interval[df_mRNA_age$age>=25 & df_mRNA_age$age<=48]<-"25-48 months"
 df_mRNA_age$age_interval[df_mRNA_age$age>=49 & df_mRNA_age$age<=96]<-"49-96 months"
 
-#--------------------
+```
+
+
+>Here is the code used to simulate INFy and TNFa expression:
+
+
+```{r results='hide', warning=F, message=FALSE}
 set.seed(222)
 age_IFNy<-c(rep(120, N*(0.14)), rep(0,N*(0.2)), rep(-20,N*(0.23)), ceiling(runif(N*(0.43), 1, 96)))
 age_df <- as.data.frame(replicate(1, sample(age_IFNy, N, replace = F))) 
@@ -373,7 +194,7 @@ n_df_IFNy_age$category[n_df_IFNy_age$age== 0]<-"newborn"
 n_df_IFNy_age$category[n_df_IFNy_age$age>0 & n_df_IFNy_age$age<=96]<-"Infant"
 n_df_IFNy_age$category[n_df_IFNy_age$age== 120]<-"Adult"
 
-#----------
+#-------------------------------------------------------------
 
 set.seed(222)
 age_TNFa<-c(rep(120, N*(0.19)), rep(0,N*(.13)), rep(-20,N*(.14)), ceiling(runif(N*(.54), 1, 96)))
@@ -403,7 +224,14 @@ n_df_TNFa_age$category[n_df_TNFa_age$age==-20]<-'preterm'
 n_df_TNFa_age$category[n_df_TNFa_age$age== 0]<-"newborn"
 n_df_TNFa_age$category[n_df_TNFa_age$age>0 & n_df_TNFa_age$age<=96]<-"Infant"
 n_df_TNFa_age$category[n_df_TNFa_age$age== 120]<-"Adult"
-#------------------------------
+
+```
+
+
+>Here is the code used to simulate IL12 producing cells:
+
+```{r results='hide', warning=F, message=FALSE}
+
 set.seed(222)
 v_IFNy<-df_IFNy_age[,2]
 age_IL12<-c(rep(0,N*(.16)), ceiling(runif(N*(0.84), 1, 96))) 
@@ -431,6 +259,7 @@ n_df_IL12_age<-df_IL12_age
 n_df_IL12_age$IL12[n_df_IL12_age$IL12<0] <- 0
 n3_df_mg_age<-n_df_mg_age[,2:4]
 m_n3_df_mg_age<-melt(n3_df_mg_age)
+
 ```
 
 
